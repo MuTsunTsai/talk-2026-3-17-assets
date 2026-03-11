@@ -1,0 +1,541 @@
+/* LogiTrack 全域自訂樣式 */
+
+:root {
+	--sidebar-width-expanded: 240px;
+	--sidebar-width-collapsed: 64px;
+	--topbar-height: 56px;
+	--sidebar-bg: #1e2a3a;
+	--sidebar-text: #a8b9cc;
+	--sidebar-active: #4a9eff;
+	--sidebar-hover-bg: #2a3a4e;
+}
+
+/* ===== 版型 ===== */
+
+body {
+	background-color: #f4f6f9;
+	font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.app-layout {
+	display: flex;
+	min-height: 100vh;
+	width: 100vw;
+}
+
+/* ===== Topbar ===== */
+
+.topbar {
+	position: fixed;
+	top: 0;
+	left: var(--sidebar-width-expanded);
+	right: 0;
+	height: var(--topbar-height);
+	background: #fff;
+	border-bottom: 1px solid #e2e8f0;
+	display: flex;
+	align-items: center;
+	padding: 0 1.5rem;
+	gap: 1rem;
+	z-index: 100;
+	transition: left 0.3s ease;
+}
+
+.topbar.sidebar-collapsed {
+	left: var(--sidebar-width-collapsed);
+}
+
+.topbar-title {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: #1a202c;
+	flex: 1;
+}
+
+.topbar-avatar {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #4a9eff, #7c3aed);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-weight: 600;
+	font-size: 0.85rem;
+	cursor: pointer;
+}
+
+/* ===== Sidebar ===== */
+
+.sidebar {
+	width: var(--sidebar-width-expanded);
+	min-height: 100vh;
+	background: var(--sidebar-bg);
+	display: flex;
+	flex-direction: column;
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	z-index: 200;
+	transition: width 0.3s ease;
+	overflow: hidden;
+}
+
+.sidebar.collapsed {
+	width: var(--sidebar-width-collapsed);
+}
+
+.sidebar-brand {
+	height: var(--topbar-height);
+	display: flex;
+	align-items: center;
+	padding: 0 1.25rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	gap: 0.75rem;
+	white-space: nowrap;
+}
+
+.sidebar-brand-icon {
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	background: var(--sidebar-active);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	font-size: 1rem;
+}
+
+.sidebar-brand-name {
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: #fff;
+	letter-spacing: 0.5px;
+}
+
+.sidebar-nav {
+	flex: 1;
+	padding: 0.75rem 0;
+	list-style: none;
+	margin: 0;
+}
+
+.sidebar-nav-item {
+	position: relative;
+}
+
+.sidebar-nav-link {
+	display: flex;
+	align-items: center;
+	padding: 0.65rem 1.25rem;
+	color: var(--sidebar-text);
+	text-decoration: none;
+	gap: 0.85rem;
+	white-space: nowrap;
+	border-radius: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-nav-link:hover {
+	background: var(--sidebar-hover-bg);
+	color: #fff;
+}
+
+.sidebar-nav-link.active {
+	background: rgba(74, 158, 255, 0.15);
+	color: var(--sidebar-active);
+	border-right: 3px solid var(--sidebar-active);
+}
+
+.sidebar-nav-link .nav-icon {
+	width: 20px;
+	text-align: center;
+	font-size: 1rem;
+	flex-shrink: 0;
+}
+
+.sidebar-nav-link .nav-label {
+	font-size: 0.9rem;
+}
+
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .sidebar-brand-name,
+.sidebar.collapsed .toggle-label {
+	display: none;
+}
+
+/* Tooltip（側邊欄收合時顯示）*/
+.sidebar-nav-item .nav-tooltip {
+	position: absolute;
+	left: 56px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: #1a202c;
+	color: #fff;
+	font-size: 0.8rem;
+	padding: 0.3rem 0.65rem;
+	border-radius: 4px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s;
+	z-index: 500;
+}
+
+.sidebar-nav-item .nav-tooltip::before {
+	content: "";
+	position: absolute;
+	right: 100%;
+	top: 50%;
+	transform: translateY(-50%);
+	border: 5px solid transparent;
+	border-right-color: #1a202c;
+}
+
+.sidebar.collapsed .sidebar-nav-item:hover .nav-tooltip {
+	opacity: 1;
+}
+
+.sidebar-footer {
+	padding: 0.75rem 0;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: 0.65rem 1.25rem;
+	background: none;
+	border: none;
+	color: var(--sidebar-text);
+	cursor: pointer;
+	gap: 0.85rem;
+	white-space: nowrap;
+	transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-toggle-btn:hover {
+	background: var(--sidebar-hover-bg);
+	color: #fff;
+}
+
+/* ===== 主內容區 ===== */
+
+.main-content {
+	margin-left: var(--sidebar-width-expanded);
+	margin-top: var(--topbar-height);
+	flex: 1;
+	padding: 1.75rem;
+	transition: margin-left 0.3s ease;
+}
+
+.main-content > .row {
+	background-color: #f4f6f9;
+	position: relative;
+}
+
+.main-content.sidebar-collapsed {
+	margin-left: var(--sidebar-width-collapsed);
+}
+
+/* ===== 統計卡片 ===== */
+
+.stat-card {
+	background: #fff;
+	border-radius: 12px;
+	padding: 1.25rem 1.5rem;
+	border: 1px solid #e2e8f0;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	cursor: default;
+}
+
+.stat-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+}
+
+.stat-card-icon {
+	width: 48px;
+	height: 48px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.4rem;
+	margin-bottom: 1rem;
+}
+
+.stat-card-value {
+	font-size: 1.9rem;
+	font-weight: 700;
+	color: #1a202c;
+	line-height: 1;
+	margin-bottom: 0.3rem;
+}
+
+.stat-card-label {
+	font-size: 0.85rem;
+	color: #718096;
+}
+
+.stat-card-change {
+	font-size: 0.8rem;
+	margin-top: 0.5rem;
+}
+
+/* ===== 通用卡片 ===== */
+
+.content-card {
+	background: #fff;
+	border-radius: 12px;
+	border: 1px solid #e2e8f0;
+	overflow: hidden;
+}
+
+.content-card-header {
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid #e2e8f0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.content-card-title {
+	font-size: 1rem;
+	font-weight: 600;
+	color: #1a202c;
+	margin: 0;
+}
+
+.content-card-body {
+	padding: 1.25rem;
+}
+
+/* ===== 折線圖（Canvas）===== */
+
+.chart-canvas {
+	width: 100%;
+	height: 200px;
+	display: block;
+}
+
+/* ===== 訂單表格 ===== */
+
+.orders-table {
+	margin: 0;
+	width: 100%;
+	overflow: hidden;
+}
+
+.orders-table thead th {
+	background: #f8fafc;
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #718096;
+	border-bottom: 1px solid #e2e8f0;
+	padding: 0.75rem 1rem;
+	white-space: nowrap;
+}
+
+.orders-table tbody td {
+	padding: 0.75rem 1rem;
+	vertical-align: middle;
+	border-bottom: 1px solid #f0f4f8;
+	font-size: 0.9rem;
+}
+
+.orders-table tbody tr {
+	position: relative;
+	transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.orders-table tbody tr:hover {
+	background: #f8fafc;
+	transform: translateX(2px);
+}
+
+.orders-table .order-id {
+	font-family: monospace;
+	font-size: 0.85rem;
+	color: #4a9eff;
+	font-weight: 600;
+}
+
+.orders-table .order-amount {
+	font-weight: 600;
+	color: #1a202c;
+}
+
+/* ===== 篩選工具列 ===== */
+
+.filter-toolbar {
+	min-width: 960px;
+}
+
+/* ===== 出貨時間軸 ===== */
+
+.timeline {
+	position: relative;
+	padding-left: 1.5rem;
+}
+
+.timeline::before {
+	content: "";
+	position: absolute;
+	left: 8px;
+	top: 8px;
+	bottom: 8px;
+	width: 2px;
+	background: #e2e8f0;
+}
+
+.timeline-item {
+	position: relative;
+	margin-bottom: 1.25rem;
+}
+
+.timeline-item:last-child {
+	margin-bottom: 0;
+}
+
+.timeline-dot {
+	position: absolute;
+	left: -1.5rem;
+	top: 4px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #cbd5e0;
+	border: 2px solid #fff;
+	box-shadow: 0 0 0 2px #cbd5e0;
+}
+
+.timeline-item.completed .timeline-dot {
+	background: #48bb78;
+	box-shadow: 0 0 0 2px #48bb78;
+}
+
+.timeline-item.active .timeline-dot {
+	background: #4a9eff;
+	box-shadow: 0 0 0 2px #4a9eff;
+}
+
+.timeline-time {
+	font-size: 0.75rem;
+	color: #a0aec0;
+}
+
+.timeline-desc {
+	font-size: 0.9rem;
+	color: #2d3748;
+}
+
+.timeline-location {
+	font-size: 0.8rem;
+	color: #718096;
+}
+
+/* ===== 商品庫存表格 ===== */
+
+.stock-control {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.stock-control .btn-stock {
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	border: 1px solid #e2e8f0;
+	background: #f8fafc;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 1rem;
+	line-height: 1;
+	padding: 0;
+	transition: background 0.15s;
+}
+
+.stock-control .btn-stock:hover {
+	background: #e2e8f0;
+}
+
+.stock-value {
+	min-width: 40px;
+	text-align: center;
+	font-weight: 600;
+	font-size: 0.9rem;
+}
+
+.stock-low {
+	color: #e53e3e;
+}
+
+.stock-warning {
+	color: #dd6b20;
+}
+
+/* ===== 設定頁 ===== */
+
+.settings-section {
+	margin-bottom: 2rem;
+}
+
+.settings-section-title {
+	font-size: 0.8rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #a0aec0;
+	margin-bottom: 1rem;
+}
+
+/* ===== 通知點 ===== */
+
+.notification-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #fc8181;
+	display: inline-block;
+}
+
+/* ===== 返回最上方按鈕 ===== */
+
+.back-to-top {
+	position: fixed;
+	bottom: 2rem;
+	right: 2rem;
+	background: none;
+	border: none;
+	color: #718096;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 3rem;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.25s ease, border-color 0.15s, color 0.15s;
+	z-index: 300;
+}
+
+.back-to-top.visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.back-to-top:hover {
+	border-color: #4a9eff;
+	color: #4a9eff;
+}

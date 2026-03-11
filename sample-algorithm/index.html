@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>PolyBool 演算法展示 — 多邊形交集</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			background: #0f0f1a;
+			color: #e0e0f0;
+			font-family: 'Segoe UI', system-ui, sans-serif;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		header {
+			padding: 24px 32px 16px;
+			text-align: center;
+		}
+
+		header h1 {
+			font-size: 1.8rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			background: linear-gradient(135deg, #7eb8ff, #c084fc);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+		}
+
+		header p {
+			margin-top: 8px;
+			font-size: 0.9rem;
+			color: #888;
+		}
+
+		.canvas-wrapper {
+			position: relative;
+			border-radius: 16px;
+			overflow: hidden;
+			box-shadow: 0 0 60px rgba(126, 184, 255, 0.12), 0 0 0 1px rgba(255,255,255,0.06);
+		}
+
+		canvas {
+			display: block;
+			cursor: default;
+		}
+
+		.legend {
+			display: flex;
+			gap: 24px;
+			margin-top: 20px;
+			font-size: 0.82rem;
+			color: #999;
+		}
+
+		.legend-item {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.legend-dot {
+			width: 14px;
+			height: 14px;
+			border-radius: 3px;
+			flex-shrink: 0;
+		}
+
+		footer {
+			margin-top: 24px;
+			padding-bottom: 24px;
+			font-size: 0.75rem;
+			color: #555;
+		}
+	</style>
+</head>
+<body>
+	<header>
+		<h1>PolyBool 多邊形交集演算法</h1>
+		<p>拖曳兩個多邊形，即時計算並顯示交集區域</p>
+	</header>
+
+	<div class="canvas-wrapper">
+		<canvas id="canvas"></canvas>
+	</div>
+
+	<div class="legend">
+		<div class="legend-item">
+			<div class="legend-dot" style="background: rgba(100, 180, 255, 0.5); border: 2px solid #64b4ff;"></div>
+			<span>多邊形 A（可拖曳）</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-dot" style="background: rgba(192, 132, 252, 0.5); border: 2px solid #c084fc;"></div>
+			<span>多邊形 B（可拖曳）</span>
+		</div>
+		<div class="legend-item">
+			<div class="legend-dot" style="background: rgba(255, 220, 80, 0.75); border: 2px solid #ffdc50;"></div>
+			<span>交集區域</span>
+		</div>
+	</div>
+
+	<footer>使用 <a href="https://github.com/velipso/polybool" style="color:#7eb8ff;text-decoration:none;">polybool</a> 計算布林多邊形運算</footer>
+
+	<script src="polybool.js"></script>
+	<script>
+		// polybool 已由 polybool.js 掛載於 window.polybool
+
+		const canvas = document.getElementById("canvas");
+		const ctx = canvas.getContext("2d");
+
+		// 響應式畫布大小
+		const W = Math.min(window.innerWidth - 40, 900);
+		const H = Math.min(window.innerHeight - 220, 600);
+		canvas.width = W;
+		canvas.height = H;
+
+		// ---- 複雜度參數（支援小數，整數部分決定 Hilbert order，小數部分線性插值細分） ----
+		// 建議範圍：1.0 ~ 6.0，每增加 1.0 頂點數約增加 4 倍
+		const COMPLEXITY = 4.5;
+		// -------------------------------------------------------
+
+		// ---- Hilbert 曲線點列產生（L-system 展開） ----
+		// 回傳 order 階 Hilbert 曲線的格點座標陣列（0~1 正規化）
+		function hilbertPoints(order) {
+			// 用旋轉法直接計算，不使用 L-system 字串
+			const n = 1 << order; // 2^order
+			const total = n * n;
+			const pts = [];
+			for (let i = 0; i < total; i++) {
+				let rx, ry, s, t = i;
+				let x = 0, y = 0;
+				for (s = 1; s < n; s <<= 1) {
+					rx = 1 & (t >> 1);
+					ry = 1 & (t ^ rx);
+					// 旋轉
+					if (ry === 0) {
+						if (rx === 1) { x = s - 1 - x; y = s - 1 - y; }
+						[x, y] = [y, x];
+					}
+					x += s * rx;
+					y += s * ry;
+					t >>= 2;
+				}
+				pts.push([x / (n - 1), y / (n - 1)]);
+			}
+			return pts;
+		}
+
+		// ---- Moore 曲線點列產生（Hilbert 的對稱版，形成封閉迴路）----
+		function moorePoints(order) {
+			// Moore 曲線 = 四個 Hilbert 曲線拼接，天然封閉
+			const n = 1 << order;
+			const total = n * n;
+			const half = [];
+			for (let i = 0; i < total; i++) {
+				let rx, ry, s, t = i;
+				let x = 0, y = 0;
+				for (s = 1; s < n; s <<= 1) {
+					rx = 1 & (t >> 1);
+					ry = 1 & (t ^ rx);
+					if (ry === 0) {
+						if (rx === 1) { x = s - 1 - x; y = s - 1 - y; }
+						[x, y] = [y, x];
+					}
+					x += s * rx;
+					y += s * ry;
+					t >>= 2;
+				}
+				half.push([x, y]);
+			}
+			// 拼四象限形成 Moore 曲線
+			const pts = [];
+			const N = n * 2;
+			for (const [x, y] of half) pts.push([x, y]);
+			for (const [x, y] of [...half].reverse()) pts.push([n + (n - 1 - x), y]);
+			for (const [x, y] of half) pts.push([n + (n - 1 - x), n + (n - 1 - y)]);
+			for (const [x, y] of [...half].reverse()) pts.push([x, n + (n - 1 - y)]);
+			return pts.map(([x, y]) => [x / (N - 1), y / (N - 1)]);
+		}
+
+		// ---- 對路徑做均勻插值，在每段之間插入 extraPerSegment 個額外點 ----
+		function subdividePath(path, extraPerSegment) {
+			if (extraPerSegment <= 0) return path;
+			const result = [];
+			const n = path.length;
+			for (let i = 0; i < n; i++) {
+				const a = path[i];
+				const b = path[(i + 1) % n];
+				result.push(a);
+				for (let k = 1; k <= extraPerSegment; k++) {
+					const t = k / (extraPerSegment + 1);
+					result.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+				}
+			}
+			return result;
+		}
+
+		// ---- 將曲線路徑膨脹成有厚度的封閉多邊形 ----
+		// 沿每段線段左右各偏移 halfW，形成一條「帶狀」多邊形
+		function strokeToPolygon(path, halfW) {
+			const n = path.length;
+			const left = [];
+			const right = [];
+
+			for (let i = 0; i < n; i++) {
+				const prev = path[(i - 1 + n) % n];
+				const next = path[(i + 1) % n];
+				// 用前後點平均方向計算法線
+				const dx = next[0] - prev[0];
+				const dy = next[1] - prev[1];
+				const len = Math.sqrt(dx * dx + dy * dy) || 1;
+				const nx = -dy / len;
+				const ny =  dx / len;
+				left.push([path[i][0] + nx * halfW, path[i][1] + ny * halfW]);
+				right.push([path[i][0] - nx * halfW, path[i][1] - ny * halfW]);
+			}
+			// 左側正向 + 右側反向 = 封閉輪廓
+			return [...left, ...[...right].reverse()];
+		}
+
+		// ---- 產生多邊形 ----
+		// complexity 為浮點數，整數部分 = Hilbert order，小數部分 = 每段插值點數
+		// 小數 0.0 → +0 個中間點，0.5 → +1 個，0.9 → +2 個（線性映射）
+
+		function complexityToOrderAndSeg(complexity) {
+			const order = Math.max(1, Math.floor(complexity));
+			// 小數部分映射到 0~3 個額外中間點
+			const frac = complexity - order;
+			const extra = Math.round(frac * 3);
+			return { order, extra };
+		}
+
+		// 多邊形 A：Hilbert 曲線帶狀輪廓
+		function makeHilbertPoly(cx, cy, size, complexity, thickness) {
+			const { order, extra } = complexityToOrderAndSeg(complexity);
+			let curve = hilbertPoints(order);
+			if (extra > 0) curve = subdividePath(curve, extra);
+			const scaled = curve.map(([x, y]) => [
+				(x - 0.5) * size + cx,
+				(y - 0.5) * size + cy,
+			]);
+			return strokeToPolygon(scaled, thickness);
+		}
+
+		// 多邊形 B：Moore 曲線帶狀輪廓（天然封閉迴路）
+		function makeMoorePoly(cx, cy, size, complexity, thickness) {
+			const { order, extra } = complexityToOrderAndSeg(complexity);
+			let curve = moorePoints(order);
+			if (extra > 0) curve = subdividePath(curve, extra);
+			const scaled = curve.map(([x, y]) => [
+				(x - 0.5) * size + cx,
+				(y - 0.5) * size + cy,
+			]);
+			return strokeToPolygon(scaled, thickness);
+		}
+
+		const polyAVerts = makeHilbertPoly(0, 0, 240, COMPLEXITY, 4);
+		const polyBVerts = makeMoorePoly(0, 0, 220, COMPLEXITY, 5);
+
+		// 轉換多邊形到 polybool regions 格式
+		function vertsToRegion(pts) {
+			return pts.map((v) => [v[0], v[1]]);
+		}
+
+		// 多邊形狀態
+		const stateA = {
+			cx: W * 0.35,
+			cy: H * 0.5,
+			pts: polyAVerts,
+			color: "#64b4ff",
+			fillColor: "rgba(100, 180, 255, 0.18)",
+			strokeColor: "rgba(100, 180, 255, 0.85)",
+			label: "A",
+		};
+
+		const stateB = {
+			cx: W * 0.65,
+			cy: H * 0.5,
+			pts: polyBVerts,
+			color: "#c084fc",
+			fillColor: "rgba(192, 132, 252, 0.18)",
+			strokeColor: "rgba(192, 132, 252, 0.85)",
+			label: "B",
+		};
+
+		// 拖曳狀態
+		let dragging = null;
+		let dragOffX = 0, dragOffY = 0;
+
+		// 取得多邊形世界座標點
+		function getWorldVerts(state) {
+			return state.pts.map(([x, y]) => [x + state.cx, y + state.cy]);
+		}
+
+		// 計算兩多邊形交集
+		function computeIntersection() {
+			const vertsA = getWorldVerts(stateA);
+			const vertsB = getWorldVerts(stateB);
+
+			const polyA = { regions: [vertsToRegion(vertsA)], inverted: false };
+			const polyB = { regions: [vertsToRegion(vertsB)], inverted: false };
+
+			try {
+				return polybool.intersect(polyA, polyB);
+			} catch (e) {
+				return null;
+			}
+		}
+
+		// 畫多邊形（填滿 + 邊框）
+		function drawPoly(pts, fillStyle, strokeStyle, lineWidth = 2) {
+			if (pts.length < 2) return;
+			ctx.beginPath();
+			ctx.moveTo(pts[0][0], pts[0][1]);
+			for (let i = 1; i < pts.length; i++) {
+				ctx.lineTo(pts[i][0], pts[i][1]);
+			}
+			ctx.closePath();
+			ctx.fillStyle = fillStyle;
+			ctx.fill();
+			ctx.strokeStyle = strokeStyle;
+			ctx.lineWidth = lineWidth;
+			ctx.stroke();
+		}
+
+		// 畫 polybool 結果（regions）
+		function drawPolyBoolResult(result, fillStyle, strokeStyle) {
+			if (!result || !result.regions || result.regions.length === 0) return;
+			ctx.beginPath();
+			for (const region of result.regions) {
+				if (region.length < 2) continue;
+				ctx.moveTo(region[0][0], region[0][1]);
+				for (let i = 1; i < region.length; i++) {
+					ctx.lineTo(region[i][0], region[i][1]);
+				}
+				ctx.closePath();
+			}
+			ctx.fillStyle = fillStyle;
+			ctx.fill("evenodd");
+			ctx.strokeStyle = strokeStyle;
+			ctx.lineWidth = 2.5;
+			ctx.stroke();
+		}
+
+		// 背景格線
+		function drawGrid() {
+			ctx.strokeStyle = "rgba(255,255,255,0.03)";
+			ctx.lineWidth = 1;
+			const step = 40;
+			for (let x = 0; x < W; x += step) {
+				ctx.beginPath();
+				ctx.moveTo(x, 0);
+				ctx.lineTo(x, H);
+				ctx.stroke();
+			}
+			for (let y = 0; y < H; y += step) {
+				ctx.beginPath();
+				ctx.moveTo(0, y);
+				ctx.lineTo(W, y);
+				ctx.stroke();
+			}
+		}
+
+		// 畫標籤
+		function drawLabel(state) {
+			ctx.save();
+			ctx.font = "bold 16px 'Segoe UI', sans-serif";
+			ctx.fillStyle = state.color;
+			ctx.shadowColor = state.color;
+			ctx.shadowBlur = 12;
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText(state.label, state.cx, state.cy);
+			ctx.restore();
+		}
+
+		// FPS 與效能計量
+		let lastFrameTime = performance.now();
+		let fps = 0;
+		let calcMs = 0;
+
+		// 畫 FPS 面板
+		function drawStats() {
+			const pad = 12;
+			const panelW = 210;
+			const panelH = 76;
+			const x = W - panelW - pad;
+			const y = pad;
+
+			// 背景
+			ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+			ctx.beginPath();
+			ctx.roundRect(x, y, panelW, panelH, 8);
+			ctx.fill();
+
+			// FPS — 顏色依高低變化
+			const fpsColor = fps >= 50 ? "#4ade80" : fps >= 25 ? "#facc15" : "#f87171";
+			ctx.font = "bold 22px 'Segoe UI', monospace";
+			ctx.fillStyle = fpsColor;
+			ctx.textAlign = "left";
+			ctx.textBaseline = "top";
+			ctx.fillText(`${fps.toFixed(0)} FPS`, x + 12, y + 8);
+
+			// 計算耗時
+			const msColor = calcMs < 16 ? "#94a3b8" : calcMs < 50 ? "#facc15" : "#f87171";
+			ctx.font = "13px 'Segoe UI', monospace";
+			ctx.fillStyle = msColor;
+			ctx.fillText(`polybool: ${calcMs.toFixed(1)} ms`, x + 12, y + 36);
+
+			// 頂點數
+			ctx.fillStyle = "#666";
+			const totalPts = polyAVerts.length + polyBVerts.length;
+			ctx.fillText(`頂點數: ${totalPts.toLocaleString()}`, x + 12, y + 54);
+		}
+
+		// 主繪圖函式
+		function draw(now) {
+			// 計算 FPS
+			const delta = now - lastFrameTime;
+			lastFrameTime = now;
+			fps = 1000 / delta;
+
+			ctx.clearRect(0, 0, W, H);
+
+			// 背景
+			ctx.fillStyle = "#0f0f1a";
+			ctx.fillRect(0, 0, W, H);
+
+			drawGrid();
+
+			const vertsA = getWorldVerts(stateA);
+			const vertsB = getWorldVerts(stateB);
+
+			// 畫多邊形 A
+			drawPoly(vertsA, stateA.fillColor, stateA.strokeColor, 2);
+
+			// 畫多邊形 B
+			drawPoly(vertsB, stateB.fillColor, stateB.strokeColor, 2);
+
+			// 計算並畫交集（計時）
+			const t0 = performance.now();
+			const intersection = computeIntersection();
+			calcMs = performance.now() - t0;
+
+			if (intersection && intersection.regions.length > 0) {
+				// 交集光暈效果
+				ctx.save();
+				ctx.shadowColor = "rgba(255, 220, 80, 0.6)";
+				ctx.shadowBlur = 20;
+				drawPolyBoolResult(
+					intersection,
+					"rgba(255, 220, 80, 0.55)",
+					"rgba(255, 200, 40, 0.9)"
+				);
+				ctx.restore();
+			}
+
+			// 標籤
+			drawLabel(stateA);
+			drawLabel(stateB);
+
+			// FPS 面板（最後畫，疊在最上層）
+			drawStats();
+
+			requestAnimationFrame(draw);
+		}
+
+		// 判斷點是否在多邊形內（射線法）
+		function pointInPolygon(px, py, pts) {
+			let inside = false;
+			for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+				const xi = pts[i][0], yi = pts[i][1];
+				const xj = pts[j][0], yj = pts[j][1];
+				const intersect =
+					yi > py !== yj > py &&
+					px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
+				if (intersect) inside = !inside;
+			}
+			return inside;
+		}
+
+		// 計算點到多邊形中心距離
+		function distToCenter(px, py, state) {
+			const dx = px - state.cx;
+			const dy = py - state.cy;
+			return Math.sqrt(dx * dx + dy * dy);
+		}
+
+		// 事件：開始拖曳
+		function onPointerDown(e) {
+			const rect = canvas.getBoundingClientRect();
+			const px = e.clientX - rect.left;
+			const py = e.clientY - rect.top;
+
+			const vertsA = getWorldVerts(stateA);
+			const vertsB = getWorldVerts(stateB);
+
+			const inA = pointInPolygon(px, py, vertsA);
+			const inB = pointInPolygon(px, py, vertsB);
+
+			if (inA && inB) {
+				// 在兩者交叉處，選最近中心的
+				const dA = distToCenter(px, py, stateA);
+				const dB = distToCenter(px, py, stateB);
+				dragging = dA < dB ? stateA : stateB;
+			} else if (inA) {
+				dragging = stateA;
+			} else if (inB) {
+				dragging = stateB;
+			} else {
+				// 沒在內部，抓最近的中心（半徑 160 內）
+				const dA = distToCenter(px, py, stateA);
+				const dB = distToCenter(px, py, stateB);
+				if (dA < 160 && dA < dB) dragging = stateA;
+				else if (dB < 160) dragging = stateB;
+			}
+
+			if (dragging) {
+				dragOffX = px - dragging.cx;
+				dragOffY = py - dragging.cy;
+				canvas.style.cursor = "grabbing";
+				e.preventDefault();
+			}
+		}
+
+		function onPointerMove(e) {
+			if (!dragging) return;
+			const rect = canvas.getBoundingClientRect();
+			dragging.cx = e.clientX - rect.left - dragOffX;
+			dragging.cy = e.clientY - rect.top - dragOffY;
+			// 拖曳位置更新後由 rAF loop 自動重繪
+		}
+
+		function onPointerUp() {
+			dragging = null;
+			canvas.style.cursor = "default";
+		}
+
+		// 滑鼠懸停時改變指標
+		canvas.addEventListener("mousemove", (e) => {
+			if (dragging) {
+				onPointerMove(e);
+				return;
+			}
+			const rect = canvas.getBoundingClientRect();
+			const px = e.clientX - rect.left;
+			const py = e.clientY - rect.top;
+			const vertsA = getWorldVerts(stateA);
+			const vertsB = getWorldVerts(stateB);
+			const inA = pointInPolygon(px, py, vertsA);
+			const inB = pointInPolygon(px, py, vertsB);
+			const dA = distToCenter(px, py, stateA);
+			const dB = distToCenter(px, py, stateB);
+			if (inA || inB || dA < 160 || dB < 160) {
+				canvas.style.cursor = "grab";
+			} else {
+				canvas.style.cursor = "default";
+			}
+		});
+
+		canvas.addEventListener("mousedown", onPointerDown);
+		canvas.addEventListener("mouseup", onPointerUp);
+		canvas.addEventListener("mouseleave", onPointerUp);
+
+		// 觸控支援
+		canvas.addEventListener("touchstart", (e) => {
+			const touch = e.touches[0];
+			onPointerDown({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() });
+		}, { passive: false });
+
+		canvas.addEventListener("touchmove", (e) => {
+			const touch = e.touches[0];
+			onPointerMove({ clientX: touch.clientX, clientY: touch.clientY });
+			e.preventDefault();
+		}, { passive: false });
+
+		canvas.addEventListener("touchend", onPointerUp);
+
+		// 啟動繪圖迴圈
+		requestAnimationFrame(draw);
+	</script>
+</body>
+</html>

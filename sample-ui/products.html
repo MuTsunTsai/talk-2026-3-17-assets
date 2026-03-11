@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>LogiTrack - 商品庫存</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/app.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
+</head>
+<body>
+
+<div class="app-layout">
+
+	<!-- 側邊欄 -->
+	<aside class="sidebar" id="sidebar">
+		<div class="sidebar-brand">
+			<div class="sidebar-brand-icon">📦</div>
+			<span class="sidebar-brand-name">LogiTrack</span>
+		</div>
+		<ul class="sidebar-nav">
+			<li class="sidebar-nav-item">
+				<a href="index.html" class="sidebar-nav-link">
+					<span class="nav-icon">📊</span>
+					<span class="nav-label">總覽儀表板</span>
+				</a>
+				<span class="nav-tooltip">總覽儀表板</span>
+			</li>
+			<li class="sidebar-nav-item">
+				<a href="orders.html" class="sidebar-nav-link">
+					<span class="nav-icon">📋</span>
+					<span class="nav-label">訂單管理</span>
+				</a>
+				<span class="nav-tooltip">訂單管理</span>
+			</li>
+			<li class="sidebar-nav-item">
+				<a href="shipments.html" class="sidebar-nav-link">
+					<span class="nav-icon">🚚</span>
+					<span class="nav-label">出貨追蹤</span>
+				</a>
+				<span class="nav-tooltip">出貨追蹤</span>
+			</li>
+			<li class="sidebar-nav-item">
+				<a href="products.html" class="sidebar-nav-link active">
+					<span class="nav-icon">🏷️</span>
+					<span class="nav-label">商品庫存</span>
+				</a>
+				<span class="nav-tooltip">商品庫存</span>
+			</li>
+			<li class="sidebar-nav-item">
+				<a href="settings.html" class="sidebar-nav-link">
+					<span class="nav-icon">⚙️</span>
+					<span class="nav-label">系統設定</span>
+				</a>
+				<span class="nav-tooltip">系統設定</span>
+			</li>
+		</ul>
+		<div class="sidebar-footer">
+			<button class="sidebar-toggle-btn" id="sidebarToggle">
+				<span class="nav-icon toggle-icon">«</span>
+				<span class="nav-label toggle-label">收合選單</span>
+			</button>
+		</div>
+	</aside>
+
+	<!-- 頂部導覽列 -->
+	<header class="topbar" id="topbar">
+		<h1 class="topbar-title">商品庫存</h1>
+		<span class="text-muted" style="font-size:0.85rem;">共 15 項商品</span>
+		<div class="topbar-avatar" title="管理員">管</div>
+	</header>
+
+	<!-- 主內容 -->
+	<main class="main-content" id="mainContent">
+
+		<!-- 庫存警示列 -->
+		<div class="alert alert-warning d-flex align-items-center mb-4" role="alert" id="lowStockAlert">
+			<span class="me-2">⚠️</span>
+			<div id="lowStockMsg"></div>
+		</div>
+
+		<!-- 篩選列 -->
+		<div class="content-card mb-4">
+			<div class="content-card-body">
+				<div class="row g-3">
+					<div class="col-md-4">
+						<input type="text" class="form-control form-control-sm" id="productSearch" placeholder="搜尋商品名稱或 SKU">
+					</div>
+					<div class="col-md-3">
+						<select class="form-select form-select-sm" id="categoryFilter">
+							<option value="">全部分類</option>
+							<option value="電子">電子</option>
+							<option value="家具">家具</option>
+							<option value="生活">生活</option>
+							<option value="運動">運動</option>
+							<option value="廚房">廚房</option>
+							<option value="寢具">寢具</option>
+							<option value="配件">配件</option>
+							<option value="個人護理">個人護理</option>
+							<option value="文具">文具</option>
+						</select>
+					</div>
+					<div class="col-md-3">
+						<select class="form-select form-select-sm" id="stockFilter">
+							<option value="">全部庫存狀態</option>
+							<option value="low">低庫存（≤10）</option>
+							<option value="normal">正常庫存</option>
+						</select>
+					</div>
+					<div class="col-md-2">
+						<button class="btn btn-sm btn-primary w-100" id="btnProductSearch">搜尋</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- 商品表格 -->
+		<div class="content-card">
+			<div class="content-card-header">
+				<h2 class="content-card-title">商品列表</h2>
+				<div class="d-flex gap-2">
+					<button class="btn btn-sm btn-outline-secondary">匯出</button>
+					<button class="btn btn-sm btn-primary">新增商品</button>
+				</div>
+			</div>
+			<div class="table-responsive">
+				<table class="table mb-0" id="productsTable">
+					<thead>
+						<tr>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">商品名稱</th>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">分類</th>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">SKU</th>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">定價</th>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">庫存數量</th>
+							<th style="background:#f8fafc;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#718096;padding:0.75rem 1rem;">快速調整</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+
+	</main>
+</div>
+
+<button class="back-to-top" id="backToTop" title="返回最上方"><i class="fa-solid fa-circle-arrow-up"></i></button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/products.js"></script>
+</body>
+</html>
